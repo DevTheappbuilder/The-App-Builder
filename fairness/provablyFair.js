@@ -11,7 +11,8 @@ function getRoll(userId) {
   const message = `${user.client_seed}:${user.nonce}`;
   const hash = crypto.createHmac('sha256', fair.server_seed).update(message).digest('hex');
   const int = parseInt(hash.slice(0, 13), 16);
-  const randomFloat = int / 0x1fffffffffffff;
+  // 13 hex chars = 52 bits; divide by 2^52 for [0, 1)
+  const randomFloat = int / 0x10000000000000;
 
   db.prepare('UPDATE users SET nonce = nonce + 1 WHERE user_id = ?').run(userId);
 

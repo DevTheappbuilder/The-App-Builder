@@ -16,7 +16,8 @@ def get_roll(user_id: int) -> dict:
     message = f"{user['client_seed']}:{user['nonce']}".encode()
     digest = hmac.new(fair["server_seed"].encode(), message, hashlib.sha256).hexdigest()
     integer = int(digest[:13], 16)
-    rand = integer / float(0x1FFFFFFFFFFFFF)
+    # 13 hex chars = 52 bits; normalize by 2^52 to get [0, 1)
+    rand = integer / float(16 ** 13)
 
     with get_conn() as conn:
         conn.execute("UPDATE users SET nonce = nonce + 1 WHERE user_id = ?", (str(user_id),))
