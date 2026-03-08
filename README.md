@@ -26,6 +26,15 @@ Professional Discord casino bot built with Node.js + discord.js v14.
   2. `<project>/commands` (relative to script location)
   3. `<cwd>/commands`
 
+
+## Pterodactyl / Panel Startup Tips
+- Ensure startup `MAIN_FILE` is `index.js` for runtime (and run `node register-commands.js` manually when needed).
+- Add environment variables in the panel:
+  - `DISCORD_TOKEN` = your real bot token
+  - `CLIENT_ID` = your bot application/client ID
+  - optional `COMMANDS_DIR` if your panel uses a different working directory
+- Do **not** leave `DISCORD_TOKEN` as placeholder text (the bot now validates token format and exits with a clear message).
+
 ## Commands
 Economy:
 - `/balance`, `/daily`, `/leaderboard`, `/tip`, `/stats`

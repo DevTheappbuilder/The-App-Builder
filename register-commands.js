@@ -33,12 +33,22 @@ function loadCommands(dir) {
   }
 }
 
+function assertEnv(name) {
+  const value = process.env[name];
+  if (!value || !String(value).trim()) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 const commandsDir = resolveCommandsDir();
 loadCommands(commandsDir);
 
-const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+const token = assertEnv('DISCORD_TOKEN');
+const clientId = assertEnv('CLIENT_ID');
+const rest = new REST({ version: '10' }).setToken(token);
 
 (async () => {
-  await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: commands });
+  await rest.put(Routes.applicationCommands(clientId), { body: commands });
   console.log(`Registered ${commands.length} slash commands.`);
 })();

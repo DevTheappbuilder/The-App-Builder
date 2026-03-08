@@ -35,6 +35,12 @@ function loadCommands(dir) {
   }
 }
 
+function looksLikeDiscordToken(token) {
+  if (!token || typeof token !== 'string') return false;
+  if (token.includes('your_') || token.includes('token_here') || token.includes('example')) return false;
+  return token.split('.').length === 3;
+}
+
 const commandsDir = resolveCommandsDir();
 if (commandsDir) loadCommands(commandsDir);
 
@@ -59,4 +65,13 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+const token = process.env.DISCORD_TOKEN;
+if (!looksLikeDiscordToken(token)) {
+  console.error('DISCORD_TOKEN is missing or invalid. Set a valid bot token in your environment variables.');
+  process.exit(1);
+}
+
+client.login(token).catch((err) => {
+  console.error('Failed to login to Discord. Verify DISCORD_TOKEN and bot intents.', err);
+  process.exit(1);
+});
