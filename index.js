@@ -44,7 +44,7 @@ function looksLikeDiscordToken(token) {
 const commandsDir = resolveCommandsDir();
 if (commandsDir) loadCommands(commandsDir);
 
-client.once('ready', () => {
+client.once('clientReady', () => {
   client.user.setActivity('🎰 Hyper Bet | Casino', { type: ActivityType.Playing });
   console.log(`Logged in as ${client.user.tag} with ${client.commands.size} commands loaded.`);
 });
