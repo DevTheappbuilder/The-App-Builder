@@ -1,0 +1,12 @@
+[project]
+name = "hyper-bet"
+version = "1.0.0"
+description = "Hyper Bet Discord casino bot in Python"
+requires-python = ">=3.11"
+dependencies = [
+  "discord.py==2.4.0",
+  "python-dotenv==1.0.1"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
