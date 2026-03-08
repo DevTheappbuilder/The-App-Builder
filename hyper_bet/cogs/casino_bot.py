@@ -126,7 +126,7 @@ class HyperBetCog(commands.Cog):
         )
 
     @app_commands.command(name="dice", description="Roll > target")
-    async def dice(self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, None], target: app_commands.Range[float, 5, 95]):
+    async def dice(self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, None], target: app_commands.Range[float, 5.0, 95.0]):
         cd = self.on_cooldown(interaction.user.id, "dice")
         if cd:
             return await interaction.response.send_message(f"Cooldown: {cd}s", ephemeral=True)
@@ -144,7 +144,7 @@ class HyperBetCog(commands.Cog):
         )
 
     @app_commands.command(name="limbo", description="Limbo crash game")
-    async def limbo(self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, None], multiplier: app_commands.Range[float, 1.01, 1000]):
+    async def limbo(self, interaction: discord.Interaction, amount: app_commands.Range[int, 1, None], multiplier: app_commands.Range[float, 1.01, 1000.0]):
         cd = self.on_cooldown(interaction.user.id, "limbo")
         if cd:
             return await interaction.response.send_message(f"Cooldown: {cd}s", ephemeral=True)
