@@ -25,5 +25,6 @@ Hyper Bet is a Discord casino bot implemented in **Python** using **discord.py 2
 - `/mint`, `/removepoints`, `/setpoints`
 
 ## Notes
+- Python 3.13+: `audioop` was removed from stdlib, so this project includes `audioop-lts` in requirements for compatibility.
 - Slash commands are synced automatically at startup.
 - Bot status is set to: `🎰 Hyper Bet | Casino`

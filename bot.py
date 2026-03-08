@@ -1,5 +1,13 @@
 import os
 import asyncio
+
+try:
+    import audioop  # Python <=3.12 stdlib or provided by audioop-lts on 3.13+
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        "Missing 'audioop' module. On Python 3.13+, install requirements including audioop-lts."
+    ) from exc
+
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
