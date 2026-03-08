@@ -6,6 +6,24 @@ const { Client, Collection, GatewayIntentBits, ActivityType } = require('discord
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
+function resolveCommandsDir() {
+  const candidates = [
+    process.env.COMMANDS_DIR,
+    path.join(__dirname, 'commands'),
+    path.join(process.cwd(), 'commands'),
+  ].filter(Boolean);
+
+  const found = candidates.find((dir) => fs.existsSync(dir) && fs.statSync(dir).isDirectory());
+  if (!found) {
+    console.error(
+      `Commands directory not found. Checked: ${candidates.join(', ')}. Set COMMANDS_DIR to the absolute commands path.`,
+    );
+    return null;
+  }
+
+  return found;
+}
+
 function loadCommands(dir) {
   for (const file of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, file.name);
@@ -17,11 +35,12 @@ function loadCommands(dir) {
   }
 }
 
-loadCommands(path.join(__dirname, 'commands'));
+const commandsDir = resolveCommandsDir();
+if (commandsDir) loadCommands(commandsDir);
 
 client.once('ready', () => {
   client.user.setActivity('🎰 Hyper Bet | Casino', { type: ActivityType.Playing });
-  console.log(`Logged in as ${client.user.tag}`);
+  console.log(`Logged in as ${client.user.tag} with ${client.commands.size} commands loaded.`);
 });
 
 client.on('interactionCreate', async (interaction) => {
