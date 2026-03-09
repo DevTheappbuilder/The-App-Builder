@@ -1,0 +1,16 @@
+{
+  "name": "hyper-bet",
+  "version": "1.0.0",
+  "description": "Hyper Bet Discord casino bot with provably fair games",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "register": "node register-commands.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.6.1"
+  }
+}
