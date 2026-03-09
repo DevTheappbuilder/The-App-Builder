@@ -25,12 +25,12 @@ def looks_like_token(token: str | None) -> bool:
 
 class HyperBetBot(commands.Bot):
     def __init__(self):
-        intents = discord.Intents.none()
-        super().__init__(command_prefix="!", intents=intents)
+        intents = discord.Intents.default()
+        intents.message_content = True
+        super().__init__(command_prefix=".", intents=intents, help_command=None)
 
     async def setup_hook(self):
         await self.load_extension("hyper_bet.cogs.casino_bot")
-        await self.tree.sync()
 
 
 async def main():

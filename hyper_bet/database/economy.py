@@ -1,7 +1,6 @@
 from .db import get_conn, get_or_create_user
 
 TARGET_RTP = 0.96
-JACKPOT_RATE = 0.01
 
 
 def get_user(user_id: int):
@@ -27,8 +26,8 @@ def set_balance(user_id: int, amount: int) -> None:
 def record_bet(user_id: int, wager: float, payout: float) -> None:
     with get_conn() as conn:
         conn.execute(
-            "UPDATE house SET total_wagered = total_wagered + ?, total_paid = total_paid + ?, jackpot = jackpot + ? WHERE id = 1",
-            (wager, payout, wager * JACKPOT_RATE),
+            "UPDATE house SET total_wagered = total_wagered + ?, total_paid = total_paid + ? WHERE id = 1",
+            (wager, payout),
         )
         conn.execute(
             """
