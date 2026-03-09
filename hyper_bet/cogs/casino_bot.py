@@ -5,7 +5,7 @@ from discord.ext import commands
 from hyper_bet.database.db import get_conn
 from hyper_bet.database.economy import get_user, change_balance, set_balance, get_house, TARGET_RTP
 from hyper_bet.casino.games import ensure_bankroll, settle_game, get_roll, rtp_adjusted
-from hyper_bet.casino.blackjack import start_game, action, settle, get_state, hand_value, can_split
+from hyper_bet.casino.blackjack import start_game, action, settle, get_state, hand_value
 from hyper_bet.fairness.provably_fair import get_server_seed_state, set_client_seed, rotate_server_seed
 
 
@@ -17,6 +17,66 @@ def hand_render(state, reveal_dealer=False):
         marker = "👉 " if idx == state.active_hand and not state.finished else ""
         lines.append(f"{marker}Hand {idx + 1}: {h.cards} = {total} ({h.wager}) {'✅' if h.done else ''}")
     return "\n".join(lines)
+
+
+class BlackjackView(discord.ui.View):
+    def __init__(self, cog: "HyperBetCog", user_id: int, timeout: float = 120):
+        super().__init__(timeout=timeout)
+        self.cog = cog
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("This is not your blackjack session.", ephemeral=True)
+            return False
+        return True
+
+    async def _finish_if_done(self, interaction: discord.Interaction, result_state) -> None:
+        if not result_state.finished:
+            await interaction.response.edit_message(
+                content=f"🃏 Blackjack in progress\n{hand_render(result_state)}",
+                view=self,
+            )
+            return
+
+        done = settle(self.user_id)
+        settle_game(self.user_id, done["total_wager"], done["payout"])
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(
+            content=(
+                f"🃏 Blackjack finished\n{hand_render(done['state'], True)}\n"
+                f"Outcomes: {', '.join(done['outcomes'])}\nPayout: {int(done['payout'])}"
+            ),
+            view=self,
+        )
+        self.stop()
+
+    @discord.ui.button(label="Hit", style=discord.ButtonStyle.primary)
+    async def hit_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        result = action(self.user_id, "hit")
+        if "error" in result:
+            for item in self.children:
+                item.disabled = True
+            await interaction.response.edit_message(content=result["error"], view=self)
+            self.stop()
+            return
+        await self._finish_if_done(interaction, result["state"])
+
+    @discord.ui.button(label="Stand", style=discord.ButtonStyle.secondary)
+    async def stand_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        result = action(self.user_id, "stand")
+        if "error" in result:
+            for item in self.children:
+                item.disabled = True
+            await interaction.response.edit_message(content=result["error"], view=self)
+            self.stop()
+            return
+        await self._finish_if_done(interaction, result["state"])
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
 
 
 class HyperBetCog(commands.Cog):
@@ -39,7 +99,7 @@ class HyperBetCog(commands.Cog):
             "**Hyper Bet Commands (. prefix)**\n"
             "Economy: `.balance`, `.daily`, `.leaderboard`, `.tip @user amount`, `.stats`\n"
             "Fairness: `.seed`, `.setseed <seed>`, `.rotateseed` (admin)\n"
-            "Casino: `.cf <amount> <heads/tails>`, `.dice <amount> <target>`, `.limbo <amount> <multiplier>`, `.blackjack <amount>`, `.hit`, `.stand`, `.double`, `.split`\n"
+            "Casino: `.cf <amount> <heads/tails>`, `.dice <amount> <target>`, `.limbo <amount> <multiplier>`, `.blackjack <amount>`\n"
             "Admin: `.mint @user <amount>`, `.removepoints @user <amount>`, `.setpoints @user <amount>`"
         )
 
@@ -176,43 +236,8 @@ class HyperBetCog(commands.Cog):
         if not ensure_bankroll(ctx.author.id, amount):
             return await ctx.send("Insufficient points.")
         state = start_game(ctx.author.id, amount)
-        await ctx.send(f"🃏 Blackjack started\n{hand_render(state)}\nUse .hit .stand .double .split")
-
-    async def _bj_action(self, ctx: commands.Context, kind: str):
-        state = get_state(ctx.author.id)
-        if not state:
-            return await ctx.send("No active blackjack game.")
-        hand = state.hands[state.active_hand]
-        if kind in {"double", "split"} and not ensure_bankroll(ctx.author.id, hand.wager):
-            return await ctx.send("Not enough points.")
-        if kind == "split" and not can_split(hand):
-            return await ctx.send("Cannot split this hand.")
-        result = action(ctx.author.id, kind)
-        if "error" in result:
-            return await ctx.send(result["error"])
-        if not result["state"].finished:
-            return await ctx.send(f"Action: {kind}\n{hand_render(result['state'])}")
-        done = settle(ctx.author.id)
-        settle_game(ctx.author.id, done["total_wager"], done["payout"])
-        await ctx.send(
-            f"Finished\n{hand_render(done['state'], True)}\nOutcomes: {', '.join(done['outcomes'])}\nPayout: {int(done['payout'])}"
-        )
-
-    @commands.command()
-    async def hit(self, ctx: commands.Context):
-        await self._bj_action(ctx, "hit")
-
-    @commands.command()
-    async def stand(self, ctx: commands.Context):
-        await self._bj_action(ctx, "stand")
-
-    @commands.command()
-    async def double(self, ctx: commands.Context):
-        await self._bj_action(ctx, "double")
-
-    @commands.command()
-    async def split(self, ctx: commands.Context):
-        await self._bj_action(ctx, "split")
+        view = BlackjackView(self, ctx.author.id)
+        await ctx.send(f"🃏 Blackjack started\n{hand_render(state)}\nUse buttons: Hit / Stand", view=view)
 
     @commands.command()
     @commands.has_permissions(administrator=True)

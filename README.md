@@ -6,7 +6,7 @@ Hyper Bet is a Discord casino bot implemented in **Python** using **discord.py 2
 - Provably-fair HMAC-SHA256 RNG (server seed + client seed + nonce)
 - SQLite persistence (users, balances, stats, house, fairness)
 - 96% target RTP tracking
-- Games: coinflip, dice, limbo, blackjack (+ hit/stand/double/split)
+- Games: coinflip, dice, limbo, blackjack (button UI for Hit/Stand)
 - Economy: balance, daily, leaderboard, tip, stats
 - Admin: mint, removepoints, setpoints, rotateseed
 - Prefix command system with `.` and custom `.help`
@@ -24,7 +24,7 @@ Hyper Bet is a Discord casino bot implemented in **Python** using **discord.py 2
 - `.balance`, `.daily`, `.leaderboard`, `.tip @user amount`, `.stats`
 - `.seed`, `.setseed <seed>`, `.rotateseed`
 - `.cf <amount> <heads/tails>`, `.dice <amount> <target>`, `.limbo <amount> <multiplier>`
-- `.blackjack <amount>`, `.hit`, `.stand`, `.double`, `.split`
+- `.blackjack <amount>` (uses Hit/Stand buttons)
 - `.mint @user <amount>`, `.removepoints @user <amount>`, `.setpoints @user <amount>`
 
 ## Notes
