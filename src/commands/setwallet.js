@@ -4,7 +4,7 @@ const { isValidUpi, isValidLtc, isValidUsdt } = require('../utils/validators');
 
 const data = new SlashCommandBuilder()
   .setName('setwallet')
-  .setDescription('Set or update your payout wallet addresses')
+  .setDescription('Set or update your wallet addresses')
   .addStringOption((o) => o.setName('upi').setDescription('UPI ID').setRequired(false))
   .addStringOption((o) => o.setName('ltc').setDescription('Litecoin address').setRequired(false))
   .addStringOption((o) => o.setName('usdt').setDescription('USDT address').setRequired(false));
@@ -18,7 +18,7 @@ async function execute(interaction) {
   const usdt = interaction.options.getString('usdt');
 
   if (!isValidUpi(upi) || !isValidLtc(ltc) || !isValidUsdt(usdt)) {
-    return interaction.reply({ content: 'Invalid wallet format provided.', ephemeral: true });
+    return interaction.reply({ content: 'One or more wallet values are invalid.', ephemeral: true });
   }
 
   const update = {};
@@ -27,7 +27,7 @@ async function execute(interaction) {
   if (usdt !== null) update.usdtAddress = usdt;
 
   await User.updateOne({ userId: interaction.user.id }, { $set: update }, { upsert: true });
-  return interaction.reply({ content: 'Wallet details saved successfully.', ephemeral: true });
+  return interaction.reply({ content: 'Wallet profile updated.', ephemeral: true });
 }
 
 module.exports = { data, execute };

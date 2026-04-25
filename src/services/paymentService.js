@@ -1,37 +1,54 @@
 const { v4: uuidv4 } = require('uuid');
+const { LRUCache } = require('lru-cache');
 const User = require('../models/User');
-const { fetchLtcPrice } = require('../utils/price');
+const { convertAmount } = require('../utils/price');
+const { priceBufferPercent } = require('../config');
+
+const walletCache = new LRUCache({ max: 500, ttl: 60_000 });
 
 function generateNote() {
-  return `DRX-${uuidv4().replace(/-/g, '').slice(0, 4).toUpperCase()}`;
-}
-
-async function convertCurrency(amount, method, currency) {
-  if (method !== 'LTC') {
-    return { originalAmount: amount, convertedAmount: amount, unit: currency };
-  }
-
-  const prices = await fetchLtcPrice();
-  const price = currency === 'INR' ? prices.inr : prices.usd;
-  return {
-    originalAmount: amount,
-    convertedAmount: Number((amount / price).toFixed(8)),
-    unit: 'LTC',
-    reference: prices,
-  };
+  return `DRX-${uuidv4().replace(/-/g, '').slice(0, 6).toUpperCase()}`;
 }
 
 async function getWallet(userId, method) {
-  const user = await User.findOne({ userId });
+  const key = `${userId}:${method}`;
+  const cached = walletCache.get(key);
+  if (cached) return cached;
+
+  const user = await User.findOne({ userId }).lean();
   if (!user) return null;
-  if (method === 'UPI') return user.upiId;
-  if (method === 'LTC') return user.ltcAddress;
-  if (method === 'USDT') return user.usdtAddress;
-  return null;
+
+  const wallet = method === 'UPI' ? user.upiId : method === 'LTC' ? user.ltcAddress : user.usdtAddress;
+  if (wallet) walletCache.set(key, wallet);
+  return wallet;
+}
+
+async function createPaymentQuote({ amount, currency, method }) {
+  if (method === 'UPI') {
+    return {
+      payAmount: amount,
+      payCurrency: currency,
+      fiatEquivalent: `${amount} ${currency}`,
+      updatedAt: new Date(),
+      buffered: false,
+    };
+  }
+
+  const target = method === 'LTC' ? 'LTC' : 'USDT';
+  const conversion = await convertAmount({ amount, from: currency, to: target, bufferPercent: priceBufferPercent });
+  return {
+    payAmount: conversion.amount,
+    payCurrency: target,
+    rawAmount: conversion.rawAmount,
+    fiatEquivalent: `${amount} ${currency}`,
+    updatedAt: conversion.updatedAt,
+    buffered: true,
+    bufferPercent: priceBufferPercent,
+  };
 }
 
 module.exports = {
   generateNote,
-  convertCurrency,
   getWallet,
+  createPaymentQuote,
 };

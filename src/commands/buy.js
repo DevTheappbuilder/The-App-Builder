@@ -1,13 +1,8 @@
-const {
-  SlashCommandBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ChannelType,
-} = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const User = require('../models/User');
 const { createDeal } = require('../services/dealService');
-const { dealSummaryEmbed } = require('../utils/embeds');
-const { dealTimeoutMinutes } = require('../config');
+const { buildDealEmbed } = require('../utils/embeds');
+const { sanitizeText } = require('../utils/validators');
 
 const data = new SlashCommandBuilder()
   .setName('buy')
@@ -20,42 +15,31 @@ const data = new SlashCommandBuilder()
       .setName('method')
       .setDescription('Payment method')
       .setRequired(true)
-      .addChoices(
-        { name: 'UPI', value: 'UPI' },
-        { name: 'LTC', value: 'LTC' },
-        { name: 'USDT', value: 'USDT' }
-      )
+      .addChoices({ name: 'UPI', value: 'UPI' }, { name: 'LTC', value: 'LTC' }, { name: 'USDT', value: 'USDT' })
   )
-  .addStringOption((o) =>
-    o
-      .setName('currency')
-      .setDescription('Currency')
-      .setRequired(false)
-      .addChoices({ name: 'USD', value: 'USD' }, { name: 'INR', value: 'INR' })
-  );
+  .addStringOption((o) => o.setName('currency').setDescription('Currency').addChoices({ name: 'USD', value: 'USD' }, { name: 'INR', value: 'INR' }));
 
 if (typeof data.setContexts === 'function') data.setContexts(0, 1, 2);
 if (typeof data.setIntegrationTypes === 'function') data.setIntegrationTypes(0, 1);
 
 async function execute(interaction) {
   const seller = interaction.options.getUser('seller', true);
-  const product = interaction.options.getString('product', true);
+  const product = sanitizeText(interaction.options.getString('product', true), 300);
   const amount = interaction.options.getNumber('amount', true);
   const method = interaction.options.getString('method', true);
   const currency = interaction.options.getString('currency') || 'USD';
 
   if (seller.bot || seller.id === interaction.user.id) {
-    return interaction.reply({ content: 'Seller must be another human user.', ephemeral: true });
+    return interaction.reply({ content: 'Seller must be a different human user.', ephemeral: true });
   }
 
-  const deal = await createDeal({
-    buyerId: interaction.user.id,
-    sellerId: seller.id,
-    product,
-    amount,
-    method,
-    currency,
-    expiresAt: new Date(Date.now() + dealTimeoutMinutes * 60 * 1000),
+  const deal = await createDeal({ buyerId: interaction.user.id, sellerId: seller.id, product, amount, method, currency });
+  const sellerProfile = await User.findOne({ userId: seller.id }).lean();
+  const embed = buildDealEmbed({
+    deal,
+    title: 'Awaiting Seller Confirmation',
+    instruction: 'Seller should confirm to lock terms and start payment phase.',
+    sellerProfile,
   });
 
   const row = new ActionRowBuilder().addComponents(
@@ -64,31 +48,27 @@ async function execute(interaction) {
     new ButtonBuilder().setCustomId(`dispute:${deal.dealId}`).setLabel('Request Support').setStyle(ButtonStyle.Secondary)
   );
 
-  const embed = dealSummaryEmbed(deal, 'Awaiting Seller Confirmation');
-  let destinationMessage;
-
+  let message;
   if (interaction.inGuild() && interaction.channel?.isTextBased()) {
     const thread = await interaction.channel.threads.create({
       name: `deal-${deal.dealId.toLowerCase()}`,
-      autoArchiveDuration: 60,
       type: ChannelType.PrivateThread,
-      reason: `Deal ${deal.dealId}`,
       invitable: false,
+      autoArchiveDuration: 60,
+      reason: `Escrow Deal ${deal.dealId}`,
     });
     await thread.members.add(interaction.user.id);
     await thread.members.add(seller.id);
-    destinationMessage = await thread.send({ embeds: [embed], components: [row] });
+    message = await thread.send({ embeds: [embed], components: [row] });
     deal.threadChannelId = thread.id;
   } else {
-    const buyerDm = await interaction.user.createDM();
     const sellerDm = await seller.createDM();
-    destinationMessage = await sellerDm.send({ content: `Deal initiated by <@${interaction.user.id}>`, embeds: [embed], components: [row] });
-    await buyerDm.send({ content: `Deal ${deal.dealId} created. Seller has been notified.` });
+    message = await sellerDm.send({ content: `Deal requested by <@${interaction.user.id}>`, embeds: [embed], components: [row] });
+    await interaction.user.send(`Deal **${deal.dealId}** created and sent to seller.`).catch(() => null);
   }
 
-  deal.messageId = destinationMessage.id;
+  deal.messageId = message.id;
   await deal.save();
-
   return interaction.reply({ content: `Deal created: **${deal.dealId}**`, ephemeral: true });
 }
 

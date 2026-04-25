@@ -9,6 +9,10 @@ const userSchema = new Schema(
     reputation: { type: Number, default: 0, min: 0 },
     totalDeals: { type: Number, default: 0, min: 0 },
     scamReports: { type: Number, default: 0, min: 0 },
+    completedDeals: { type: Number, default: 0, min: 0 },
+    cancelledDeals: { type: Number, default: 0, min: 0 },
+    disputes: { type: Number, default: 0, min: 0 },
+    ratingScore: { type: Number, default: 5, min: 0, max: 5 },
   },
   { timestamps: true }
 );

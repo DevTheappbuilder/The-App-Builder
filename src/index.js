@@ -4,11 +4,12 @@ const path = require('node:path');
 const mongoose = require('mongoose');
 const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
 const config = require('./config');
+const logger = require('./utils/logger');
 
 async function bootstrap() {
   config.assertConfig();
   await mongoose.connect(config.mongoUri);
-  console.log('MongoDB connected');
+  logger.info('mongo_connected');
 
   const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.DirectMessages],
@@ -20,23 +21,20 @@ async function bootstrap() {
   const commandDir = path.join(__dirname, 'commands');
   for (const file of fs.readdirSync(commandDir).filter((f) => f.endsWith('.js'))) {
     const command = require(path.join(commandDir, file));
-    if (command.data && command.execute) client.commands.set(command.data.name, command);
+    if (command?.data && command?.execute) client.commands.set(command.data.name, command);
   }
 
   const eventDir = path.join(__dirname, 'events');
   for (const file of fs.readdirSync(eventDir).filter((f) => f.endsWith('.js'))) {
     const event = require(path.join(eventDir, file));
-    if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args));
-    } else {
-      client.on(event.name, (...args) => event.execute(...args));
-    }
+    if (event.once) client.once(event.name, (...args) => event.execute(...args));
+    else client.on(event.name, (...args) => event.execute(...args));
   }
 
   await client.login(config.token);
 }
 
 bootstrap().catch((error) => {
-  console.error('Fatal startup error:', error);
+  logger.error('fatal_startup_error', { message: error.message, stack: error.stack });
   process.exit(1);
 });
