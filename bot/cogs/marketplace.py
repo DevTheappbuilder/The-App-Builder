@@ -62,7 +62,7 @@ class MarketplaceCog(commands.Cog):
 
     @app_commands.command(name='buy', description='Create a new deal with a seller')
     @app_commands.describe(seller='Seller user', product='Product details', amount='Amount', method='UPI/LTC/USDT', currency='INR/USD')
-    async def buy(self, interaction: discord.Interaction, seller: discord.User, product: str, amount: app_commands.Range[float, 0.01, 1_000_000], method: Literal['UPI', 'LTC', 'USDT'], currency: Literal['USD', 'INR']):
+    async def buy(self, interaction: discord.Interaction, seller: discord.User, product: str, amount: app_commands.Range[float, 0.01, 1_000_000.0], method: Literal['UPI', 'LTC', 'USDT'], currency: Literal['USD', 'INR']):
         if seller.bot or seller.id == interaction.user.id:
             await interaction.response.send_message('Seller must be another human user.', ephemeral=True)
             return
