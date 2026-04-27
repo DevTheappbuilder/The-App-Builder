@@ -5,15 +5,6 @@ from uuid import uuid4
 
 from bot.services.payment_service import generate_note
 
-TRANSITIONS = {
-    'INIT': {'LOCKED', 'CANCELLED', 'DISPUTE'},
-    'LOCKED': {'PAYMENT', 'CANCELLED', 'DISPUTE'},
-    'PAYMENT': {'DELIVERY', 'CANCELLED', 'DISPUTE'},
-    'DELIVERY': {'FINAL', 'DISPUTE'},
-    'FINAL': {'COMPLETE', 'DISPUTE'},
-    'COMPLETE': set(),
-}
-
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -57,12 +48,16 @@ async def create_deal(db, settings, *, buyer_id: int, seller_id: int, product: s
         'currency': currency,
         'method': method,
         'status': 'INITIATED',
-        'stage': 'INIT',
+        'stage': 'DEAL_CONFIRM',
         'is_locked': False,
         'payment_proof': None,
         'unique_note': generate_note(),
         'expires_at': created + timedelta(minutes=settings.deal_timeout_minutes),
         'auto_release_at': created + timedelta(minutes=settings.auto_release_minutes),
+        'buyer_deal_confirmed': False,
+        'seller_deal_confirmed': False,
+        'buyer_price_confirmed': False,
+        'seller_price_confirmed': False,
         'buyer_confirmed_final': False,
         'seller_confirmed_final': False,
         'payment_confirmed_by_seller': False,
@@ -87,43 +82,100 @@ async def save_deal(db, deal: dict) -> None:
     await db.deals.update_one({'deal_id': deal['deal_id']}, {'$set': deal})
 
 
-async def progress_stage(db, settings, deal: dict, *, actor_id: int, next_stage: str, status: str, detail: str = '') -> dict:
-    allowed = TRANSITIONS.get(deal['stage'], set())
-    if next_stage not in allowed:
-        raise ValueError(f"Invalid stage transition {deal['stage']} -> {next_stage}")
+async def mark_deal_confirmation(db, deal: dict, actor_id: int, role: str) -> dict:
+    if deal['stage'] != 'DEAL_CONFIRM':
+        raise ValueError('Deal confirmation stage already completed')
 
-    deal['stage'] = next_stage
-    deal['status'] = status
+    if role == 'buyer':
+        deal['buyer_deal_confirmed'] = True
+    elif role == 'seller':
+        deal['seller_deal_confirmed'] = True
+    else:
+        raise ValueError('Invalid role')
 
-    if next_stage == 'LOCKED':
+    deal['activity_log'].append(_activity(actor_id, 'DEAL_CONFIRMED', role))
+
+    if deal['buyer_deal_confirmed'] and deal['seller_deal_confirmed']:
+        deal['stage'] = 'PRICE_CONFIRM'
+        deal['status'] = 'INITIATED'
         deal['is_locked'] = True
-        deal['locked_at'] = _now()
-        deal['expires_at'] = _now() + timedelta(minutes=settings.payment_timeout_minutes)
+        deal['activity_log'].append(_activity(actor_id, 'STAGE_PRICE_CONFIRM', 'Both sides confirmed the deal'))
 
-    if next_stage == 'FINAL':
-        deal['expires_at'] = _now() + timedelta(minutes=settings.finalization_timeout_minutes)
-
-    deal['activity_log'].append(_activity(actor_id, f'STAGE_{next_stage}', detail))
     await save_deal(db, deal)
     return deal
 
 
-async def complete_deal(db, deal: dict, actor_id: int, role: str) -> dict:
+async def mark_price_confirmation(db, settings, deal: dict, actor_id: int, role: str) -> dict:
+    if deal['stage'] != 'PRICE_CONFIRM':
+        raise ValueError('Price confirmation stage not active')
+
+    if role == 'buyer':
+        deal['buyer_price_confirmed'] = True
+    elif role == 'seller':
+        deal['seller_price_confirmed'] = True
+    else:
+        raise ValueError('Invalid role')
+
+    deal['activity_log'].append(_activity(actor_id, 'PRICE_CONFIRMED', role))
+
+    if deal['buyer_price_confirmed'] and deal['seller_price_confirmed']:
+        deal['stage'] = 'PAYMENT'
+        deal['status'] = 'PAYMENT_PENDING'
+        deal['expires_at'] = _now() + timedelta(minutes=settings.payment_timeout_minutes)
+        deal['activity_log'].append(_activity(actor_id, 'STAGE_PAYMENT', 'Both sides confirmed the amount'))
+
+    await save_deal(db, deal)
+    return deal
+
+
+async def mark_payment_paid(db, deal: dict, actor_id: int, proof: str | None = None) -> dict:
+    if deal['stage'] != 'PAYMENT':
+        raise ValueError('Payment stage not active')
+    if proof:
+        deal['payment_proof'] = proof
+
+    deal['status'] = 'PAID'
+    deal['activity_log'].append(_activity(actor_id, 'PAYMENT_MARKED_PAID', deal['method']))
+    await save_deal(db, deal)
+    return deal
+
+
+async def confirm_payment(db, deal: dict, actor_id: int, source: str) -> dict:
+    deal['payment_confirmed_by_seller'] = True
+    deal['stage'] = 'DELIVERY'
+    deal['status'] = 'DELIVERED'
+    deal['activity_log'].append(_activity(actor_id, 'PAYMENT_CONFIRMED', source))
+    await save_deal(db, deal)
+    return deal
+
+
+async def mark_delivered(db, deal: dict, actor_id: int) -> dict:
+    if deal['stage'] != 'DELIVERY':
+        raise ValueError('Delivery stage not active')
+    deal['delivery_confirmed_by_seller'] = True
+    deal['stage'] = 'FINAL'
+    deal['activity_log'].append(_activity(actor_id, 'PRODUCT_DELIVERED', 'Seller delivered product'))
+    await save_deal(db, deal)
+    return deal
+
+
+async def mark_final_confirmation(db, deal: dict, actor_id: int, role: str) -> dict:
     if deal['stage'] != 'FINAL':
-        raise ValueError('Deal is not in FINAL stage')
+        raise ValueError('Final stage not active')
 
     if role == 'buyer':
         deal['buyer_confirmed_final'] = True
-    if role == 'seller':
+    elif role == 'seller':
         deal['seller_confirmed_final'] = True
+    else:
+        raise ValueError('Invalid role')
 
     deal['activity_log'].append(_activity(actor_id, 'FINAL_CONFIRM', role))
 
     if deal['buyer_confirmed_final'] and deal['seller_confirmed_final']:
         deal['stage'] = 'COMPLETE'
         deal['status'] = 'COMPLETED'
-        deal['activity_log'].append(_activity(actor_id, 'DEAL_COMPLETED', 'Mutual final confirmation'))
-
+        deal['activity_log'].append(_activity(actor_id, 'DEAL_COMPLETED', 'Both sides finalized deal'))
         await db.users.update_one(
             {'user_id': deal['buyer_id']},
             {'$inc': {'total_deals': 1, 'completed_deals': 1, 'reputation': 1}, '$setOnInsert': {'rating_score': 5}},
@@ -137,6 +189,25 @@ async def complete_deal(db, deal: dict, actor_id: int, role: str) -> dict:
 
     await save_deal(db, deal)
     return deal
+
+
+def verify_crypto_addresses(deal: dict, buyer_profile: dict | None, seller_profile: dict | None) -> tuple[bool, str]:
+    if deal['method'] not in {'LTC', 'USDT'}:
+        return False, 'Not a crypto deal'
+
+    buyer_profile = buyer_profile or {}
+    seller_profile = seller_profile or {}
+    buyer_addr = buyer_profile.get('ltc_address') if deal['method'] == 'LTC' else buyer_profile.get('usdt_address')
+    seller_addr = seller_profile.get('ltc_address') if deal['method'] == 'LTC' else seller_profile.get('usdt_address')
+
+    if not buyer_addr or not seller_addr:
+        return False, 'Both buyer and seller must set crypto wallet addresses first.'
+    if buyer_addr == seller_addr:
+        return False, 'Buyer and seller wallet addresses cannot be the same.'
+    if deal['amount'] <= 0:
+        return False, 'Deal amount is invalid.'
+
+    return True, 'Auto-verified: wallet addresses and amount validated.'
 
 
 async def cancel_deal(db, deal: dict, actor_id: int | str, reason: str) -> dict:
@@ -176,20 +247,6 @@ async def process_timeouts(db) -> dict:
         auto_released += 1
 
     return {'expired_cancelled': expired, 'auto_released': auto_released}
-
-
-async def admin_action(db, deal: dict, actor_id: int, action: str) -> dict:
-    if action in {'resolve', 'refund'}:
-        deal['status'] = 'CANCELLED'
-        deal['activity_log'].append(_activity(actor_id, f'ADMIN_{action.upper()}', 'Admin closed deal'))
-    elif action == 'force_complete':
-        deal['status'] = 'COMPLETED'
-        deal['stage'] = 'COMPLETE'
-        deal['seller_confirmed_final'] = True
-        deal['buyer_confirmed_final'] = True
-        deal['activity_log'].append(_activity(actor_id, 'ADMIN_FORCE_COMPLETE', 'Admin forced completion'))
-    await save_deal(db, deal)
-    return deal
 
 
 async def stats(db) -> dict:

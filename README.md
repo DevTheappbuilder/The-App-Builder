@@ -54,3 +54,8 @@ python main.py
 - Price conversion and buffered crypto quotes
 - Reputation, invoices, analytics
 - Admin controls: resolve/refund/force-complete
+
+
+## Deal UX
+
+All deal lifecycle actions are button-driven inside the deal thread/channel. Slash commands are kept minimal (`/buy`, `/setwallet`, `/wallet`, `/ltc`).
