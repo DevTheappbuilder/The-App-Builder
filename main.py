@@ -43,8 +43,9 @@ class EscrowBot(commands.Bot):
         intents.guilds = True
         intents.messages = True
         intents.dm_messages = True
+        intents.message_content = True
 
-        super().__init__(command_prefix='!', intents=intents)
+        super().__init__(command_prefix='.', intents=intents)
         self.settings = get_settings()
         self.db = Database(self.settings.mongo_uri, self.settings.mongo_db_name)
         self.cooldowns: dict[tuple[int, str], datetime] = {}
@@ -52,6 +53,7 @@ class EscrowBot(commands.Bot):
     async def setup_hook(self) -> None:
         await self.db.ensure_indexes()
         await self.load_extension('bot.cogs.marketplace')
+        await self.load_extension('bot.cogs.prefix_tools')
         synced = await self.tree.sync()
         logger.info('synced %s app commands', len(synced))
 

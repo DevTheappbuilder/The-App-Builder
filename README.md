@@ -59,3 +59,18 @@ python main.py
 ## Deal UX
 
 All deal lifecycle actions are button-driven inside the deal thread/channel. Slash commands are kept minimal (`/buy`, `/setwallet`, `/wallet`, `/ltc`).
+
+
+## Prefix Commands (. commands)
+
+Enable **Message Content Intent** for your bot in Discord Developer Portal to use prefix commands.
+
+Available:
+- `.rating` (optionally mention member)
+- `.history` (optionally mention member)
+- `.upi`
+- `.ltcaddy`
+- `.usdt`
+- `.qr [upi/ltc/usdt] [amount] [note]`
+
+Address commands (`.upi`, `.ltcaddy`, `.usdt`) open an embed with slot buttons (1-3). After selecting a slot, press **Send to Chat** to post the chosen address.
