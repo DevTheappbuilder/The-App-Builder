@@ -58,7 +58,7 @@ class DealView(discord.ui.View):
             return True
         return False
 
-    @discord.ui.button(label='Confirm Deal', style=discord.ButtonStyle.success, custom_id='persistent_confirm')
+    @discord.ui.button(label='✅ Confirm Deal', style=discord.ButtonStyle.success, custom_id='persistent_confirm')
     async def confirm_deal(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.stage != 'init':
             await interaction.response.send_message('This action is no longer valid.', ephemeral=True)
@@ -93,7 +93,7 @@ class DealView(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed, view=DealView(self.bot, self.deal_id, stage='payment'))
 
-    @discord.ui.button(label='I Paid', style=discord.ButtonStyle.success, custom_id='persistent_paid')
+    @discord.ui.button(label='💸 I Paid', style=discord.ButtonStyle.success, custom_id='persistent_paid')
     async def paid(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.stage != 'payment':
             await interaction.response.send_message('This action is not valid right now.', ephemeral=True)
@@ -108,7 +108,7 @@ class DealView(discord.ui.View):
 
         await interaction.response.send_modal(ProofModal(self.bot, self.deal_id))
 
-    @discord.ui.button(label='Payment Received ✅', style=discord.ButtonStyle.success, custom_id='persistent_confirm_payment')
+    @discord.ui.button(label='✅ Payment Received', style=discord.ButtonStyle.success, custom_id='persistent_confirm_payment')
     async def confirm_payment(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.stage != 'paid':
             await interaction.response.send_message('This action is not valid right now.', ephemeral=True)
@@ -129,7 +129,7 @@ class DealView(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed, view=DealView(self.bot, self.deal_id, stage='delivery'))
 
-    @discord.ui.button(label='Delivered', style=discord.ButtonStyle.primary, custom_id='persistent_delivered')
+    @discord.ui.button(label='📦 Delivered', style=discord.ButtonStyle.primary, custom_id='persistent_delivered')
     async def delivered(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.stage != 'delivery':
             await interaction.response.send_message('This action is not valid right now.', ephemeral=True)
@@ -148,7 +148,7 @@ class DealView(discord.ui.View):
         embed = deal_embed(deal, 'Buyer: click Confirm Received if correct.', 'Buyer Confirmation', seller_profile)
         await interaction.response.edit_message(embed=embed, view=DealView(self.bot, self.deal_id, stage='confirm_received'))
 
-    @discord.ui.button(label='Confirm Received', style=discord.ButtonStyle.success, custom_id='persistent_confirm_received')
+    @discord.ui.button(label='🎉 Confirm Received', style=discord.ButtonStyle.success, custom_id='persistent_confirm_received')
     async def confirm_received(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.stage != 'confirm_received':
             await interaction.response.send_message('This action is not valid right now.', ephemeral=True)
@@ -169,7 +169,7 @@ class DealView(discord.ui.View):
         embed = deal_embed(deal, 'Seller must run /confirm to finalize deal.', 'Final Confirmation', seller_profile)
         await interaction.response.edit_message(embed=embed, view=DealView(self.bot, self.deal_id, stage='final'))
 
-    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.danger, custom_id='persistent_cancel')
+    @discord.ui.button(label='⛔ Cancel', style=discord.ButtonStyle.danger, custom_id='persistent_cancel')
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         deal = await self._deal()
         if not deal:
@@ -186,7 +186,7 @@ class DealView(discord.ui.View):
             child.disabled = True
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label='Request Support', style=discord.ButtonStyle.secondary, custom_id='persistent_dispute')
+    @discord.ui.button(label='🆘 Request Support', style=discord.ButtonStyle.secondary, custom_id='persistent_dispute')
     async def dispute(self, interaction: discord.Interaction, button: discord.ui.Button):
         deal = await self._deal()
         if not deal:
