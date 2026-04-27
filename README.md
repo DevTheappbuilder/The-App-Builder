@@ -21,6 +21,13 @@ If you get `ModuleNotFoundError: No module named 'motor'`, dependencies were not
 py -m pip install -r requirements.txt
 ```
 
+If you get `ConfigurationError: No default database name defined or provided`, either:
+
+1. Put database name in URI (example `mongodb://127.0.0.1:27017/escrow_bot`), or
+2. Set `MONGO_DB_NAME=escrow_bot` in `.env`.
+
+This bot now safely falls back to `MONGO_DB_NAME` if URI has no DB name.
+
 ## Quick start (macOS/Linux)
 
 ```bash

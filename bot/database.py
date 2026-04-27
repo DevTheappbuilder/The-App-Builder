@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo.errors import ConfigurationError
 
 
 class Database:
-    def __init__(self, mongo_uri: str):
+    def __init__(self, mongo_uri: str, db_name: str = 'escrow_bot'):
         self.client = AsyncIOMotorClient(mongo_uri)
-        self.db: AsyncIOMotorDatabase = self.client.get_default_database() or self.client['escrow_bot']
+        self.db: AsyncIOMotorDatabase = self._resolve_database(db_name)
+
+    def _resolve_database(self, fallback_name: str) -> AsyncIOMotorDatabase:
+        try:
+            db = self.client.get_default_database()
+            if db is not None:
+                return db
+        except ConfigurationError:
+            pass
+        return self.client[fallback_name]
 
     @property
     def users(self):

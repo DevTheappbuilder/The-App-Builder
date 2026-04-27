@@ -12,6 +12,7 @@ class Settings:
     discord_token: str
     discord_client_id: int
     mongo_uri: str
+    mongo_db_name: str
     support_invite: str
     support_channel_id: int | None
     admin_role_ids: set[int]
@@ -46,6 +47,7 @@ def get_settings() -> Settings:
         discord_token=token,
         discord_client_id=int(client_id),
         mongo_uri=mongo_uri,
+        mongo_db_name=os.getenv('MONGO_DB_NAME', 'escrow_bot'),
         support_invite=os.getenv('SUPPORT_SERVER_INVITE', 'https://discord.gg/support'),
         support_channel_id=int(os.getenv('SUPPORT_CHANNEL_ID')) if os.getenv('SUPPORT_CHANNEL_ID') else None,
         admin_role_ids=_parse_int_set(os.getenv('ADMIN_ROLE_IDS', '')),

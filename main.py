@@ -46,7 +46,7 @@ class EscrowBot(commands.Bot):
 
         super().__init__(command_prefix='!', intents=intents)
         self.settings = get_settings()
-        self.db = Database(self.settings.mongo_uri)
+        self.db = Database(self.settings.mongo_uri, self.settings.mongo_db_name)
         self.cooldowns: dict[tuple[int, str], datetime] = {}
 
     async def setup_hook(self) -> None:
