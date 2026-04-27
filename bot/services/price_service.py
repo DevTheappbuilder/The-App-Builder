@@ -1,10 +1,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import aiohttp
+from urllib.parse import urlencode
+from urllib.request import urlopen
+import asyncio
+import json
+
 from cachetools import TTLCache
 
 _rates_cache: TTLCache[str, dict] = TTLCache(maxsize=16, ttl=45)
+
+
+def _http_get_json(url: str, params: dict | None = None, timeout: int = 12) -> dict:
+    full_url = f"{url}?{urlencode(params)}" if params else url
+    with urlopen(full_url, timeout=timeout) as response:
+        return json.loads(response.read().decode('utf-8'))
 
 
 async def fetch_rates() -> dict:
@@ -12,16 +22,14 @@ async def fetch_rates() -> dict:
     if cached:
         return cached
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-            'https://api.coingecko.com/api/v3/simple/price',
-            params={'ids': 'litecoin,tether', 'vs_currencies': 'usd,inr'},
-            timeout=12,
-        ) as cg_resp:
-            cg = await cg_resp.json()
-
-        async with session.get('https://open.er-api.com/v6/latest/USD', timeout=12) as fx_resp:
-            fx = await fx_resp.json()
+    cg_task = asyncio.to_thread(
+        _http_get_json,
+        'https://api.coingecko.com/api/v3/simple/price',
+        {'ids': 'litecoin,tether', 'vs_currencies': 'usd,inr'},
+        12,
+    )
+    fx_task = asyncio.to_thread(_http_get_json, 'https://open.er-api.com/v6/latest/USD', None, 12)
+    cg, fx = await asyncio.gather(cg_task, fx_task)
 
     rates = {
         'ltc_usd': cg['litecoin']['usd'],

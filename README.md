@@ -1,6 +1,6 @@
 # Python Discord Escrow Bot
 
-This repository is Python-first and runs on `discord.py` with MongoDB (Motor).
+This repository is Python-first and runs on `discord.py` with MongoDB (Motor). HTTP price requests use Python stdlib (no `aiohttp` build step).
 
 ## Quick start (Windows)
 
@@ -15,7 +15,7 @@ copy .env.example .env
 py main.py
 ```
 
-If you get `ModuleNotFoundError: No module named 'motor'`, it means dependencies were not installed in your active Python environment. Re-run:
+If you get `ModuleNotFoundError: No module named 'motor'`, dependencies were not installed in your active Python environment. Re-run:
 
 ```bat
 py -m pip install -r requirements.txt
