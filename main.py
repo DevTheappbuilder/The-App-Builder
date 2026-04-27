@@ -1,15 +1,38 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from datetime import datetime, timedelta, timezone
 
-import discord
-from discord.ext import commands, tasks
+try:
+    import discord
+    from discord.ext import commands, tasks
+except ModuleNotFoundError as exc:
+    missing = exc.name or 'dependency'
+    print(
+        f"[startup error] Missing Python package: {missing}\n"
+        "Install dependencies first:\n"
+        "  py -m pip install -r requirements.txt\n"
+        "Then run:\n"
+        "  py main.py"
+    )
+    sys.exit(1)
 
-from bot.config import get_settings
-from bot.database import Database
-from bot.services.deal_service import process_timeouts
-from bot.utils.logger import build_logger
+try:
+    from bot.config import get_settings
+    from bot.database import Database
+    from bot.services.deal_service import process_timeouts
+    from bot.utils.logger import build_logger
+except ModuleNotFoundError as exc:
+    missing = exc.name or 'dependency'
+    print(
+        f"[startup error] Missing Python package: {missing}\n"
+        "Install dependencies first:\n"
+        "  py -m pip install -r requirements.txt\n"
+        "Then run:\n"
+        "  py main.py"
+    )
+    sys.exit(1)
 
 logger = build_logger()
 
@@ -29,7 +52,6 @@ class EscrowBot(commands.Bot):
     async def setup_hook(self) -> None:
         await self.db.ensure_indexes()
         await self.load_extension('bot.cogs.marketplace')
-        self.tree.copy_global_to(guild=None)
         synced = await self.tree.sync()
         logger.info('synced %s app commands', len(synced))
 
