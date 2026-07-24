@@ -1,0 +1,15 @@
+{
+  "name": "the-app-builder-dashboard",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/core/dashboard.js"
+  },
+  "dependencies": {
+    "boxen": "^7.1.1",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "figlet": "^1.7.0",
+    "gradient-string": "^2.0.2"
+  }
+}
