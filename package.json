@@ -1,0 +1,10 @@
+{
+  "name": "zenith-discord-bot",
+  "version": "1.0.0",
+  "description": "Zenith production Discord bot with JSON database, prefix commands, and Components V2 UI.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "discord.js": "^14.21.0", "dotenv": "^16.4.7" }
+}

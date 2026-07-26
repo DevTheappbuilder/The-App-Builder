@@ -1,0 +1,4 @@
+import { updateUser } from '../utils/database.js';
+import { parseAmount, formatMoney } from '../utils/formatting.js';
+import { notice } from '../utils/ui.js';
+export default { name: 'addbal', aliases: [], adminOnly: true, async execute(message, args) { const target = message.mentions.users.first(); const amount = parseAmount(args.find((a) => /^\d/.test(a))); if (!target) return message.reply(notice('❌ Missing User', 'Mention a user to credit.')); if (!amount) return message.reply(notice('❌ Invalid Amount', 'Enter a positive number with up to two decimals.')); const user = await updateUser(target.id, (u) => { u.withdrawable += amount; }); await message.reply(notice('✅ Balance Added', `**User**\n${target}\n\n**Added**\n${formatMoney(amount)}\n\n**Withdrawable**\n${formatMoney(user.withdrawable)}\n\n**Total**\n${formatMoney(user.total)}`)); } };

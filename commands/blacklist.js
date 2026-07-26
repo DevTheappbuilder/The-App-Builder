@@ -1,0 +1,3 @@
+import { getBlacklistDb, saveBlacklistDb } from '../utils/database.js';
+import { notice } from '../utils/ui.js';
+export default { name: 'blacklist', aliases: [], adminOnly: true, async execute(message) { const target = message.mentions.users.first(); if (!target) return message.reply(notice('❌ Missing User', 'Mention a user to toggle blacklist status.')); const db = await getBlacklistDb(); const existing = db.users.includes(target.id); db.users = existing ? db.users.filter((id) => id !== target.id) : [...db.users, target.id]; await saveBlacklistDb(db); await message.reply(notice(existing ? '✅ Blacklist Removed' : '✅ User Blacklisted', `**User**\n${target}\n\n**Status**\n${existing ? 'Allowed' : 'Blacklisted'}`)); } };
